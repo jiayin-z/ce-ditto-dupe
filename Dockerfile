@@ -1,4 +1,4 @@
-FROM us-docker.pkg.dev/vertex-ai/training/pytorch-gpu.1-10:latest
+FROM us-docker.pkg.dev/vertex-ai/training/pytorch-gpu.1-9:latest
 
 
 # set working directory
@@ -11,6 +11,16 @@ RUN pip install -r requirements.txt
 RUN python -m spacy download en_core_web_lg
 RUN python -m nltk.downloader stopwords
 RUN conda install -c conda-forge nvidia-apex
+
+# patch faulty apex
+WORKDIR /
+RUN git clone https://github.com/NVIDIA/apex
+WORKDIR apex
+# if GPU available
+# RUN pip install -v --disable-pip-version-check --no-cache-dir --global-option="--cpp_ext" --global-option="--cuda_ext" ./
+# if NO GPU available
+RUN pip install -v --disable-pip-version-check --no-cache-dir ./
+WORKDIR /app
 
 # Copies the trainer code to the docker image.
 COPY ./blocking /app/blocking
