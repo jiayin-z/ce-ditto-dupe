@@ -104,3 +104,4 @@ where ``--task`` is the task name, ``--input_path`` is the input file of the can
 ## Colab notebook
 
 You can also run training and prediction using this colab [notebook](https://colab.research.google.com/drive/1eyQbockBSxxQ_tuW5F1XKyeVOM1HT_Ro?usp=sharing).
+
