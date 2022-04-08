@@ -33,17 +33,5 @@ COPY ./matcher.py /app/matcher.py
 
 RUN export CUDA_VISIBLE_DEVICES=0
 
-# # Set up the entry point to invoke the trainer.
-# ENTRYPOINT [ "python", "train_ditto.py", \
-#     "--task", "Structured/Beer", \
-#     "--batch_size", "64", \
-#     "--max_len", "64", \
-#     "--lr", "3e-5", \
-#     "--n_epochs", "40", \
-#     "--lm", "distilbert", \
-#     "--fp16", \
-#     "--da", "del" \
-#     "--dk", "product" \
-#     "--summarize" ]
-
-ENTRYPOINT [ "bash" ]
+# Set up the entry point to invoke the trainer.
+ENTRYPOINT [ "python", "train_ditto.py" ]
