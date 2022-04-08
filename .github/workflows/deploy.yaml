@@ -21,7 +21,6 @@ jobs:
         run: systemctl status docker
       - name: Build Container
         run: |
-          cd docker/
           DOCKER_BUILDKIT=1 docker build  --secret id=gcp_credentials,src=$GOOGLE_APPLICATION_CREDENTIALS -t local_container .
       - name: Tag container
         run: docker tag local_container gcr.io/${{ env.PROJECT_ID }}/${{ env.IMAGE_NAME }}:${{ env.TAG }}
