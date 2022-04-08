@@ -12,14 +12,10 @@ RUN python -m spacy download en_core_web_lg
 RUN python -m nltk.downloader stopwords
 RUN conda install -c conda-forge nvidia-apex
 
+RUN sed -i '11,14d'  /opt/conda/lib/python3.7/site-packages/apex/amp/_amp_state.py
+RUN sed -i '11s/.*/import collections.abc as container_abcs/' /opt/conda/lib/python3.7/site-packages/apex/amp/_amp_state.py
+
 # patch faulty apex
-WORKDIR /
-RUN git clone https://github.com/NVIDIA/apex
-WORKDIR apex
-# if GPU available
-# RUN pip install -v --disable-pip-version-check --no-cache-dir --global-option="--cpp_ext" --global-option="--cuda_ext" ./
-# if NO GPU available
-RUN pip install -v --disable-pip-version-check --no-cache-dir ./
 WORKDIR /app
 
 # Copies the trainer code to the docker image.
