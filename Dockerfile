@@ -27,7 +27,7 @@ COPY ./train_ditto.py /app/train_ditto.py
 COPY ./run_all_wdc.py /app/run_all_wdc.py
 COPY ./matcher.py /app/matcher.py
 
-RUN export CUDA_VISIBLE_DEVICES=0
+ENV CUDA_VISIBLE_DEVICES=0
 
 # Set up the entry point to invoke the trainer.
 ENTRYPOINT [ "python", "train_ditto.py" ]
