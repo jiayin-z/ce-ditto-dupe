@@ -9,19 +9,9 @@ from tqdm import tqdm
 
 sys.path.append("sentence-transformers")
 
-# from sentence_transformers import SentenceTransformer
+from sentence_transformers import SentenceTransformer
 import glob
 from google.cloud import storage
-from sklearn.metrics import recall_score
-
-
-from sentence_transformers.readers import InputExample
-from sentence_transformers import models, losses
-from sentence_transformers import SentencesDataset, LoggingHandler, SentenceTransformer
-from sentence_transformers.evaluation import EmbeddingSimilarityEvaluator
-
-from torch.utils.data import DataLoader
-
 
 def encode_all(path, input_fn, model, overwrite=False):
     """Encode a collection of entries and output to a file
@@ -103,37 +93,21 @@ def dump_pairs(out_fn, entries_a, entries_b, pairs):
         for idx_a, idx_b, score in pairs:
             f.write(f'"{entries_a[idx_a]}","{entries_b[idx_b]}",{str(score)},{int(idx_a)},{int(idx_b)}\n')
 
-
             
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--input_path", type=str, default="../blocking/input/mid_match/")
-    parser.add_argument("--left_fn", type=str, default='table_nb_apollo_uk_traintest_20220707_name_only_10mid_100small.txt')
-    parser.add_argument("--right_fn", type=str, default='table_nb_apollo_uk_traintest_20220707_name_only_10mid_100small.txt')
-    # parser.add_argument("--test_fn", type=str, default='mid_test.txt')                       ### test file for recall calculation
+    parser.add_argument("--left_fn", type=str, default='table_a_50.txt')
+    parser.add_argument("--right_fn", type=str, default='table_b_150.txt')
     parser.add_argument("--output_fn", type=str, default='candidates.txt')
-    parser.add_argument("--model_fn", type=str, default="model.pth/distillbert_apollo_uk_traintest_20220707_name_only_10mid_100small_40epoch/")
+    parser.add_argument("--model_fn", type=str, default="model.pth/distilbert_mid_train_300_100/")
     parser.add_argument("--batch_size", type=int, default=512)
-    parser.add_argument("--k", type=int, default=6)
-    ## original
-    parser.add_argument("--lm", type=str, default='distilbert')
+    parser.add_argument("--k", type=int, default=10)
     parser.add_argument("--threshold", type=float, default=None) # 0.6
     hp = parser.parse_args()
 
     # load the model
     model = SentenceTransformer(hp.model_fn)
-    
-#     model_names = {'distilbert': 'distilbert-base-uncased',
-#                    'bert': 'bert-base-uncased',
-#                    'albert': 'albert-base-v2' }
-    
-#     word_embedding_model = models.Transformer(model_names[hp.lm])
-#     pooling_model = models.Pooling(word_embedding_model.get_word_embedding_dimension(),
-# 				   pooling_mode_mean_tokens=True,
-# 				   pooling_mode_cls_token=False,
-# 				   pooling_mode_max_tokens=False)
-
-#     model = SentenceTransformer(modules=[word_embedding_model, pooling_model])
 
     # generate the vectors
     mata = None
@@ -158,9 +132,8 @@ if __name__ == "__main__":
     client = storage.Client()
     bucket = client.get_bucket('jiayin-test-bucket')
     
-#    recall_cal(hp.input_path, hp.test_fn, hp.output_fn)
     
-    blob = bucket.blob("apollo_uk_0707_10mid_100small_experiment/distillbert_apollo_uk_traintest_20220707_name_only_10mid_100small_k6_40epoch.jsonl")
+    blob = bucket.blob("distilbert_mid_train_300_100_condidates.jsonl")
 
     # Uploading from local file without open()
     blob.upload_from_filename(os.path.join(hp.input_path, hp.output_fn))

@@ -9,7 +9,7 @@ sys.path.insert(0, "sentence-transformers")
 from sentence_transformers.readers import InputExample
 from sentence_transformers import models, losses
 from sentence_transformers import SentencesDataset, LoggingHandler, SentenceTransformer
-from sentence_transformers.evaluation import EmbeddingSimilarityEvaluator
+from sentence_transformers.evaluation import EmbeddingSimilarityEvaluator, TripletEvaluator
 
 from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
@@ -17,7 +17,7 @@ from torch.utils.tensorboard import SummaryWriter
 import glob
 from google.cloud import storage
 
-   
+
 class Reader:
     """A simple reader class for the matching datasets.
     """
@@ -29,9 +29,9 @@ class Reader:
         
         for line in open(fn):
             sent1, sent2, label = line.strip().split('\t')
-            examples.append(InputExample(guid=self.guid,                        
-                texts=[sent1, sent2],
-                label=int(label)))
+            examples.append(InputExample(guid=self.guid, texts=[sent1, sent2, label]))                         
+                # texts=[sent1, sent2],
+                # label=int(label)))
             self.guid += 1
         return examples
 
@@ -45,7 +45,7 @@ def upload_local_directory_to_gcs(local_path, bucket, gcs_path):
             blob = bucket.blob(remote_path)
             blob.upload_from_filename(local_file)
 
-        
+
 def train(hp, tb_writer: SummaryWriter):
     """Train the advanced blocking model
     Store the trained model in hp.model_fn.
@@ -59,8 +59,7 @@ def train(hp, tb_writer: SummaryWriter):
     # define model
     model_names = {'distilbert': 'distilbert-base-uncased',
                    'bert': 'bert-base-uncased',
-                   'albert': 'albert-base-v2',
-                   'sbert': 'sentence-transformers/bert-base-nli-stsb-mean-tokens'}
+                   'albert': 'albert-base-v2' }
 
     word_embedding_model = models.Transformer(model_names[hp.lm])
     pooling_model = models.Pooling(word_embedding_model.get_word_embedding_dimension(),
@@ -79,11 +78,12 @@ def train(hp, tb_writer: SummaryWriter):
                                   shuffle=True,
                                   batch_size=hp.batch_size)
     
+    train_loss = losses.TripletLoss(model = model)
                             
-    train_loss = losses.SoftmaxLoss(
-        model=model,
-        sentence_embedding_dimension=model.get_sentence_embedding_dimension(),
-        num_labels=2)
+    # train_loss = losses.SoftmaxLoss(
+    #     model=model,
+    #     sentence_embedding_dimension=model.get_sentence_embedding_dimension(),
+    #     num_labels=2)
 
     dev_data = SentencesDataset(examples=reader.get_examples(hp.valid_fn),
                                 model=model)
@@ -93,8 +93,10 @@ def train(hp, tb_writer: SummaryWriter):
     #                             batch_size=hp.batch_size)
     
     # evaluator = EmbeddingSimilarityEvaluator(dev_dataloader)
+    evaluator = TripletEvaluator.from_input_examples(reader.get_examples(hp.valid_fn))
     
-    evaluator = EmbeddingSimilarityEvaluator.from_input_examples(reader.get_examples(hp.valid_fn))
+    # SoftMaxLoss:
+    # evaluator = EmbeddingSimilarityEvaluator.from_input_examples(reader.get_examples(hp.valid_fn))
     
     warmup_steps = math.ceil(len(train_dataloader) * hp.n_epochs / hp.batch_size * 0.1) #10% of train data for warm-up
 
@@ -124,13 +126,13 @@ if __name__=="__main__":
     # parser.add_argument("--train_fn", type=str, default="../data/wdc/shoes/train.txt.small")
     # parser.add_argument("--valid_fn", type=str, default="../data/wdc/shoes/valid.txt.small")
 
-    parser.add_argument("--train_fn", type=str, default="../data/mid_match/10_100small_brand_mcc_cleansed_name/mid_train08sample_apollo_uk_traintest_20220707_10mid_100small_mcc_cn_v1.txt")
-    parser.add_argument("--valid_fn", type=str, default="../data/mid_match/10_100small_brand_mcc_cleansed_name/mid_valid08sample_apollo_uk_traintest_20220707_10mid_100small_mcc_cn_v1.txt")
+    parser.add_argument("--train_fn", type=str, default="../data/mid_match/mid_train08sample_apollo_uk_traintest_20220707_no_ser_10mid_100small_triplet.txt")
+    parser.add_argument("--valid_fn", type=str, default="../data/mid_match/mid_valid08sample_apollo_uk_traintest_20220707_no_ser_10mid_100small_triplet.txt")
     parser.add_argument("--model_fn", type=str, default="model.pth")
     parser.add_argument("--batch_size", type=int, default=64)
     parser.add_argument("--n_epochs", type=int, default=20)
     parser.add_argument("--logdir", type=str, default="checkpoints/")
-    parser.add_argument("--lm", type=str, default='distillbert')
+    parser.add_argument("--lm", type=str, default='distilbert')
     parser.add_argument("--fp16", dest="fp16", action="store_true")
     hp = parser.parse_args()
 
@@ -154,4 +156,4 @@ if __name__=="__main__":
     # check if gpu or not.
     print(os.system("nvidia-smi"))
     
-    upload_local_directory_to_gcs(hp.model_fn, bucket, "apollo_uk_0707_10mid_100small_experiment/distillbert_apollo_uk_traintest_20220707_10mid_100small_mcc_cn_v1")
+    upload_local_directory_to_gcs(hp.model_fn, bucket, "distilbert_apollo_uk_traintest_20220707_no_ser_10mid_100small_triplet")

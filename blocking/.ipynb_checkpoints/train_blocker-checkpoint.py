@@ -26,10 +26,9 @@ class Reader:
 
     def get_examples(self, fn):
         examples = []
-        
         for line in open(fn):
             sent1, sent2, label = line.strip().split('\t')
-            examples.append(InputExample(guid=self.guid,                        
+            examples.append(InputExample(guid=self.guid,
                 texts=[sent1, sent2],
                 label=int(label)))
             self.guid += 1
@@ -59,8 +58,7 @@ def train(hp, tb_writer: SummaryWriter):
     # define model
     model_names = {'distilbert': 'distilbert-base-uncased',
                    'bert': 'bert-base-uncased',
-                   'albert': 'albert-base-v2',
-                   'sbert': 'sentence-transformers/bert-base-nli-stsb-mean-tokens'}
+                   'albert': 'albert-base-v2' }
 
     word_embedding_model = models.Transformer(model_names[hp.lm])
     pooling_model = models.Pooling(word_embedding_model.get_word_embedding_dimension(),
@@ -69,7 +67,6 @@ def train(hp, tb_writer: SummaryWriter):
 				   pooling_mode_max_tokens=False)
 
     model = SentenceTransformer(modules=[word_embedding_model, pooling_model])
-    # import pdb; pdb.set_trace()
 
     # load the training and validation data
     reader = Reader()
@@ -79,7 +76,7 @@ def train(hp, tb_writer: SummaryWriter):
                                   shuffle=True,
                                   batch_size=hp.batch_size)
     
-                            
+    
     train_loss = losses.SoftmaxLoss(
         model=model,
         sentence_embedding_dimension=model.get_sentence_embedding_dimension(),
@@ -93,7 +90,6 @@ def train(hp, tb_writer: SummaryWriter):
     #                             batch_size=hp.batch_size)
     
     # evaluator = EmbeddingSimilarityEvaluator(dev_dataloader)
-    
     evaluator = EmbeddingSimilarityEvaluator.from_input_examples(reader.get_examples(hp.valid_fn))
     
     warmup_steps = math.ceil(len(train_dataloader) * hp.n_epochs / hp.batch_size * 0.1) #10% of train data for warm-up
@@ -124,24 +120,18 @@ if __name__=="__main__":
     # parser.add_argument("--train_fn", type=str, default="../data/wdc/shoes/train.txt.small")
     # parser.add_argument("--valid_fn", type=str, default="../data/wdc/shoes/valid.txt.small")
 
-    parser.add_argument("--train_fn", type=str, default="../data/mid_match/10_100small_brand_mcc_cleansed_name/mid_train08sample_apollo_uk_traintest_20220707_10mid_100small_mcc_cn_v1.txt")
-    parser.add_argument("--valid_fn", type=str, default="../data/mid_match/10_100small_brand_mcc_cleansed_name/mid_valid08sample_apollo_uk_traintest_20220707_10mid_100small_mcc_cn_v1.txt")
+    parser.add_argument("--train_fn", type=str, default="../data/mid_match/mid_train08sample_apollo_uk_traintest_20220707_top5.txt")
+    parser.add_argument("--valid_fn", type=str, default="../data/mid_match/mid_valid08sample_apollo_uk_traintest_20220707_top5.txt")
     parser.add_argument("--model_fn", type=str, default="model.pth")
     parser.add_argument("--batch_size", type=int, default=64)
     parser.add_argument("--n_epochs", type=int, default=20)
     parser.add_argument("--logdir", type=str, default="checkpoints/")
-    parser.add_argument("--lm", type=str, default='distillbert')
+    parser.add_argument("--lm", type=str, default='distilbert')
     parser.add_argument("--fp16", dest="fp16", action="store_true")
     hp = parser.parse_args()
 
     tb_log_dir = os.environ["AIP_TENSORBOARD_LOG_DIR"]
-    gs_prefix = "gs://"
-    gcsfuse_prefix = "/gcs/"
-    if tb_log_dir and tb_log_dir.startswith(gs_prefix):
-        tb_log_dir = gcsfuse_prefix + tb_log_dir[5:]
-        
     tb_writer = SummaryWriter(log_dir=tb_log_dir)
-    
     train(hp, tb_writer)
 
     client = storage.Client()
@@ -154,4 +144,4 @@ if __name__=="__main__":
     # check if gpu or not.
     print(os.system("nvidia-smi"))
     
-    upload_local_directory_to_gcs(hp.model_fn, bucket, "apollo_uk_0707_10mid_100small_experiment/distillbert_apollo_uk_traintest_20220707_10mid_100small_mcc_cn_v1")
+    upload_local_directory_to_gcs(hp.model_fn, bucket, "distilbert_mid_train08sample_apollo_uk_traintest_20220707_top5")
